@@ -39,8 +39,11 @@ codex plugin add skills@skills
 ```sh
 claude plugin marketplace update skills && claude plugin update skills@skills
 grok plugin marketplace update && grok plugin update skills
-codex plugin marketplace upgrade skills
+codex plugin marketplace upgrade skills && codex plugin add skills@skills
 ```
+
+Codex copies the plugin into its cache, so `codex plugin add` runs again
+after the upgrade to refresh that copy.
 
 ## Layout
 
