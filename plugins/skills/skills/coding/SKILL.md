@@ -1,4 +1,4 @@
-# Coding 
+# Coding
 
 Enforce four structural disciplines on every design, schema, and code change. Mistakes in these areas are paid for in every future change, so they are held to a stricter standard than style, framework choice, or micro-optimization.
 
