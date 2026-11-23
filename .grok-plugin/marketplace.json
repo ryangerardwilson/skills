@@ -1,0 +1,21 @@
+{
+  "name": "skills",
+  "description": "Shared skills for Claude Code, Grok Build, and Codex.",
+  "owner": {
+    "name": "Ryan Gerard Wilson"
+  },
+  "plugins": [
+    {
+      "name": "skills",
+      "description": "Shared skills for Claude Code, Grok Build, and Codex.",
+      "author": {
+        "name": "Ryan Gerard Wilson"
+      },
+      "homepage": "https://github.com/ryangerardwilson/skills",
+      "source": {
+        "type": "local",
+        "path": "./plugins/skills"
+      }
+    }
+  ]
+}

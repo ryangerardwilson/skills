@@ -1,0 +1,18 @@
+{
+  "name": "skills",
+  "description": "Shared skills for Claude Code, Grok Build, and Codex.",
+  "author": {
+    "name": "Ryan Gerard Wilson",
+    "url": "https://github.com/ryangerardwilson"
+  },
+  "homepage": "https://github.com/ryangerardwilson/skills",
+  "repository": "https://github.com/ryangerardwilson/skills",
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Skills",
+    "shortDescription": "Shared skills for Claude Code, Grok Build, and Codex.",
+    "developerName": "Ryan Gerard Wilson",
+    "category": "Productivity"
+  }
+}
