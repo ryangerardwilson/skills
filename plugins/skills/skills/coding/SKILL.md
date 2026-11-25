@@ -1,6 +1,6 @@
 # Coding
 
-Guardrails for four structural areas: data model (DM), state ownership (SO), boundaries and dependency direction (BD), UI components and UX (UI).
+Guardrails for five structural areas: data model (DM), state ownership (SO), boundaries and dependency direction (BD), UI components and UX (UI), tests (TS).
 
 Start at step 1. Most changes exit there or use one section of the rules. Do not read or apply sections you are not routed to.
 
@@ -10,9 +10,9 @@ Pick the tier that fits.
 
 | Tier | Fits when | Do |
 |---|---|---|
-| Skip | No new or changed entity, field, stored or cached state, module, cross-module call, component, screen, or flow. Examples: copy change, bug fix inside one function, styling that uses existing tokens and components. | Stop. Apply nothing from this skill and do not mention it. |
+| Skip | No new or changed entity, field, stored or cached state, module, cross-module call, component, screen, flow, or test. Examples: copy change, styling that uses existing tokens and components, a comment or rename. | Stop. Apply nothing from this skill and do not mention it. |
 | Inline | The change touches one or two areas in a handful of files. | Route (step 2) and apply the routed sections yourself. No subagents. |
-| Orchestrate | A feature spanning several modules, a schema redesign, or a review of a large diff or a whole codebase. | Route (step 2), then delegate (step 4). |
+| Orchestrate | A feature spanning several modules, a schema redesign, or a review of a large diff, a whole codebase, or a whole test suite. | Route (step 2), then delegate (step 4). |
 
 Unsure between Skip and Inline: choose Inline. Unsure between Inline and Orchestrate: choose Inline.
 
@@ -24,6 +24,7 @@ Unsure between Skip and Inline: choose Inline. Unsure between Inline and Orchest
 | adds or alters stored, cached, shared, or client-side state, or adds a write to existing state | SO |
 | adds a module, a cross-module import or call, or an external integration | BD |
 | adds or alters a component, screen, form, or user flow | UI |
+| adds or alters tests, fixes a bug, or changes behaviour that existing tests cover | TS |
 
 Apply only the routed sections.
 
@@ -32,11 +33,12 @@ Apply only the routed sections.
 
 ## 3. Working rules
 
-- **Scope your reading.** Read only the entities, write paths, modules, and components this change touches. Do not survey the codebase. Do not design from assumptions about the parts you do touch.
+- **Scope your reading.** Read only the entities, write paths, modules, components, and tests this change touches. Do not survey the codebase. Do not design from assumptions about the parts you do touch.
 - **Tooling first.** If the project has linters, type checks, import-boundary rules, accessibility or token linters, schema constraints, or architecture tests, run them and trust the result. Reason only about rules they do not cover. If a rule that tooling could check keeps being violated, suggest adding the check, once.
 - **MUST rules block.** Do not write or approve code that violates one. If the request requires a violation, stop, state the cost in one or two sentences, and propose the compliant alternative. Proceed only if the user explicitly accepts, and record it (see Exceptions).
 - **SHOULD rules are defaults.** Follow them unless there is a concrete reason not to; state the reason in one line.
 - **Stay on the change.** Match existing conventions where they satisfy the rules. Do not refactor unrelated code to comply.
+- **Clean up after yourself.** Before finishing, delete any scratch scripts, debug output, and one-off repro files you created.
 - **Keep output short.** Cite rule IDs instead of restating rules. Do not narrate the triage or list rules that passed.
 
 ## 4. Orchestrate (top tier only)
@@ -50,7 +52,7 @@ Use this only if you can spawn subagents. Otherwise work through the routed sect
   2. the diff or the exact file paths to check;
   3. the task: "list violations of these rules in these files; read-only; do not fix";
   4. the output format from Reporting, a cap of 10 findings, no preamble, and the single word "none" if there are none.
-- **Delegate lookups too.** Questions such as "where is X written", "is there an existing component for Y", or "what imports Z" go to a small-model search subagent that returns the conclusion with file and line, not file contents.
+- **Delegate lookups too.** Questions such as "where is X written", "is there an existing component for Y", "is there already a test for Z", or "what imports W" go to a small-model search subagent that returns the conclusion with file and line, not file contents.
 - **Verify before reporting.** Open the cited location for every MUST finding and drop any you cannot confirm. Spot-check SHOULD findings.
 - **Do not over-delegate.** If only one section is routed and the diff is small, do it inline.
 
@@ -145,11 +147,39 @@ SHOULD
 - **UI-24** Motion is brief and explains a change of state or location.
 - **UI-25** Each shared component has examples of all its variants and states.
 
+### TS - Tests
+
+Independent of language and test framework. A test should be readable on its own and fail only when behaviour is wrong.
+
+MUST
+- **TS-1** Tests assert observable behaviour through the public interface. Never private functions, internal state, or internal call sequences.
+- **TS-2** Each test is independent: it creates the state it needs and passes alone, in any order, and in parallel. No reliance on state left by another test.
+- **TS-3** Tests are deterministic: no real clock, real network, sleeps, or unseeded randomness.
+- **TS-4** Each test checks one behaviour, and its name states the scenario and the expected outcome.
+- **TS-5** The values that matter to the assertion are visible in the test body. Shared builders supply only defaults that are irrelevant to the test.
+- **TS-6** Mock or fake only the system's edges (network, clock, third-party services, and persistence where needed). Never the code under test or the core domain.
+- **TS-7** No skipped, disabled, commented-out, or expected-to-fail tests without a stated reason and an owner. Delete tests when the code they cover is deleted.
+- **TS-8** Production code contains nothing that exists only for tests: no test flags, back doors, or methods made public for a test.
+- **TS-9** A bug fix comes with a test that fails without the fix.
+- **TS-10** The tests directory contains only tests and their support code. No scratch scripts, debug output, or one-off repros.
+- **TS-11** Every test has an assertion that can fail for the behaviour it names. Never weaken or delete an assertion, or regenerate a snapshot, just to make a test pass.
+
+SHOULD
+- **TS-12** The tests directory mirrors the source layout, so the test for a module is findable by path.
+- **TS-13** Test each behaviour at the lowest level that can prove it. Keep end-to-end tests for a few critical flows, and do not repeat the same check at several levels.
+- **TS-14** Before adding a test, look for an existing one to extend or parameterise.
+- **TS-15** Test data comes from one set of builders or factories, not hand-rolled objects or large fixture files.
+- **TS-16** Shared setup is explicit and close to the test. Avoid fixtures applied automatically or defined far from where they are used, and avoid deep helper layers or test base classes.
+- **TS-17** Snapshots are small and reviewed. Prefer explicit assertions on the fields that matter.
+- **TS-18** No logic in tests (loops, conditionals, computed expectations). Expected values are written literally.
+- **TS-19** Recorded data files (fixtures, captured responses, dumps) state their source and which tests use them; remove them when unused.
+- **TS-20** Do not write tests for trivial code or the framework itself to raise coverage.
+
 ## Reporting
 
 Report findings only, one line each:
 
-`ID | where (file:line, table, or component) | what goes wrong | smallest fix`
+`ID | where (file:line, table, component, or test) | what goes wrong | smallest fix`
 
 Example: `SO-2 | orders/refund.py:41 | second write path to order.status, so a refund can overwrite a shipment update | call OrderService.set_status`
 
@@ -165,4 +195,4 @@ Rules may be broken deliberately, never silently. When the user accepts a violat
 - keep the violation behind an interface so other code does not depend on it;
 - mention it in the summary of the change.
 
-Typical legitimate exceptions: a denormalized column or cache justified by measured performance, a temporary dual write during a migration, a one-off visual treatment for a marketing surface, a prototype explicitly marked as throwaway.
+Typical legitimate exceptions: a denormalized column or cache justified by measured performance, a temporary dual write during a migration, a one-off visual treatment for a marketing surface, a characterization test pinned to current behaviour before a refactor, a prototype explicitly marked as throwaway.
