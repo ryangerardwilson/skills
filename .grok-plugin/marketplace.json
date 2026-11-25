@@ -6,7 +6,7 @@
   },
   "plugins": [
     {
-      "name": "skills",
+      "name": "r2d2-skills",
       "description": "Shared skills for Claude Code, Grok Build, and Codex.",
       "author": {
         "name": "Ryan Gerard Wilson"
@@ -14,7 +14,7 @@
       "homepage": "https://github.com/ryangerardwilson/skills",
       "source": {
         "type": "local",
-        "path": "./plugins/skills"
+        "path": "./plugins/r2d2-skills"
       }
     }
   ]

@@ -5,10 +5,10 @@
   },
   "plugins": [
     {
-      "name": "skills",
+      "name": "r2d2-skills",
       "source": {
         "source": "local",
-        "path": "./plugins/skills"
+        "path": "./plugins/r2d2-skills"
       },
       "policy": {
         "installation": "AVAILABLE",
