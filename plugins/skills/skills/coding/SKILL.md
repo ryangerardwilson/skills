@@ -1,6 +1,8 @@
 # Coding
 
-Guardrails for five structural areas: data model (DM), state ownership (SO), boundaries and dependency direction (BD), UI components and UX (UI), tests (TS).
+Guardrails for seven structural areas: performance-critical paths (PF), data model (DM), state ownership (SO), boundaries and dependency direction (BD), UI components and UX (UI), tests (TS), specs and documentation (DC).
+
+The rules serve the system's requirements, including speed. No rule justifies a regression against a stated requirement or performance budget.
 
 Start at step 1. Most changes exit there or use one section of the rules. Do not read or apply sections you are not routed to.
 
@@ -10,9 +12,10 @@ Pick the tier that fits.
 
 | Tier | Fits when | Do |
 |---|---|---|
-| Skip | No new or changed entity, field, stored or cached state, module, cross-module call, component, screen, flow, or test. Examples: copy change, styling that uses existing tokens and components, a comment or rename. | Stop. Apply nothing from this skill and do not mention it. |
+| Skip | No change to behaviour or to a performance-critical path, and no new or changed entity, field, stored or cached state, module, cross-module call, component, screen, flow, test, spec, or doc. Examples: styling that uses existing tokens and components, a comment, an internal rename. | Stop. Apply nothing from this skill and do not mention it. |
 | Inline | The change touches one or two areas in a handful of files. | Route (step 2) and apply the routed sections yourself. No subagents. |
-| Orchestrate | A feature spanning several modules, a schema redesign, or a review of a large diff, a whole codebase, or a whole test suite. | Route (step 2), then delegate (step 4). |
+| Orchestrate | A feature spanning several modules, a schema redesign, or a review of a large diff. | Route (step 2), then delegate (step 4). |
+| Audit | Checking or fixing an existing codebase, test suite, or docs tree against these rules. | Follow step 5. |
 
 Unsure between Skip and Inline: choose Inline. Unsure between Inline and Orchestrate: choose Inline.
 
@@ -20,28 +23,36 @@ Unsure between Skip and Inline: choose Inline. Unsure between Inline and Orchest
 
 | The change... | Section |
 |---|---|
+| touches a path with a stated performance budget, or adds, removes, or replaces a cache, in-memory store, precomputed data, or background write | PF |
 | adds or alters an entity, field, relationship, constraint, or migration | DM |
 | adds or alters stored, cached, shared, or client-side state, or adds a write to existing state | SO |
 | adds a module, a cross-module import or call, or an external integration | BD |
 | adds or alters a component, screen, form, or user flow | UI |
 | adds or alters tests, fixes a bug, or changes behaviour that existing tests cover | TS |
+| adds, removes, or alters observable behaviour, or touches `openspec/`, `README.md`, `docs/`, or any Markdown file | DC |
 
 Apply only the routed sections.
 
 - **Writing code:** apply the MUST rules of each routed section. Consult its SHOULD rules only when you are designing something new in that area.
 - **Reviewing:** apply both MUST and SHOULD rules of each routed section.
 
+**Order.** When several sections are routed, apply them in the order a change is made: the spec rules first (DC-1 to DC-5), then PF, DM, SO, BD, UI, TS, and the docs rules last (DC-6 to DC-13). Under PF, read the budget and take the baseline measurement before changing any code, and take the second measurement once the change is complete.
+
+**Precedence.** A stated requirement or performance budget outranks a structural rule. A MUST outranks a SHOULD. When two MUST rules conflict, stop and ask.
+
 ## 3. Working rules
 
-- **Scope your reading.** Read only the entities, write paths, modules, components, and tests this change touches. Do not survey the codebase. Do not design from assumptions about the parts you do touch.
-- **Tooling first.** If the project has linters, type checks, import-boundary rules, accessibility or token linters, schema constraints, or architecture tests, run them and trust the result. Reason only about rules they do not cover. If a rule that tooling could check keeps being violated, suggest adding the check, once.
+- **Scope your reading.** Read only the entities, write paths, modules, components, tests, specs, and docs this change touches. Do not survey the codebase. Do not design from assumptions about the parts you do touch.
+- **Read the routers first.** For what the system must do, open the relevant spec under `openspec/specs/`. For how it is built or run, follow `docs/index.md` to the one relevant doc. Then search the code.
+- **Check the docs on every change.** For any Inline or Orchestrate change, apply DC-11 even when DC is not routed, and DC-13 when PF, DM, SO, or BD is routed. End your summary with `Docs: updated <files>` or `Docs: no impact`.
+- **Tooling first.** If the project has linters, type checks, import-boundary rules, accessibility or token linters, schema constraints, link checkers, benchmarks, `openspec validate`, or architecture tests, run them and trust the result. Reason only about rules they do not cover. If a rule that tooling could check keeps being violated, suggest adding the check, once.
 - **MUST rules block.** Do not write or approve code that violates one. If the request requires a violation, stop, state the cost in one or two sentences, and propose the compliant alternative. Proceed only if the user explicitly accepts, and record it (see Exceptions).
 - **SHOULD rules are defaults.** Follow them unless there is a concrete reason not to; state the reason in one line.
 - **Stay on the change.** Match existing conventions where they satisfy the rules. Do not refactor unrelated code to comply.
-- **Clean up after yourself.** Before finishing, delete any scratch scripts, debug output, and one-off repro files you created.
+- **Clean up after yourself.** Before finishing, delete any scratch scripts, debug output, one-off repro files, and working notes you created.
 - **Keep output short.** Cite rule IDs instead of restating rules. Do not narrate the triage or list rules that passed.
 
-## 4. Orchestrate (top tier only)
+## 4. Orchestrate
 
 Use this only if you can spawn subagents. Otherwise work through the routed sections yourself, one at a time.
 
@@ -52,11 +63,46 @@ Use this only if you can spawn subagents. Otherwise work through the routed sect
   2. the diff or the exact file paths to check;
   3. the task: "list violations of these rules in these files; read-only; do not fix";
   4. the output format from Reporting, a cap of 10 findings, no preamble, and the single word "none" if there are none.
-- **Delegate lookups too.** Questions such as "where is X written", "is there an existing component for Y", "is there already a test for Z", or "what imports W" go to a small-model search subagent that returns the conclusion with file and line, not file contents.
+- **Delegate lookups too.** Questions such as "where is X written", "is there an existing component for Y", "is there already a test for Z", "which docs mention W", or "what imports V" go to a small-model search subagent that returns the conclusion with file and line, not file contents.
 - **Verify before reporting.** Open the cited location for every MUST finding and drop any you cannot confirm. Spot-check SHOULD findings.
 - **Do not over-delegate.** If only one section is routed and the diff is small, do it inline.
 
+## 5. Audit
+
+Find in parallel, fix in sequence. Finding follows step 4 across every section. Fixing follows the rules below, so that complying with one section does not break another.
+
+- **Fix in this order.**
+  1. Gaps: report missing specs, budgets, and declarations (DC-1, PF-1, PF-2), and agree them with the user before fixing anything.
+  2. PF: take the baseline measurements.
+  3. TS safety net: bring the tests around the code to be changed up to TS-1, TS-2, TS-3, and TS-11, and get them passing.
+  4. DM, then SO, then BD.
+  5. UI.
+  6. TS, the remaining rules.
+  7. DC-6 to DC-13, once, at the end.
+- **Earlier sections are frozen.** A fix under one section satisfies every MUST of the sections already completed. If it cannot, stop and ask.
+- **Fixes preserve behaviour.** A fix that would change observable behaviour is not an audit fix. Raise an OpenSpec change for it (DC-2).
+- **Remove before repair.** Within a section, first apply the rules that delete or merge (DM-1, DM-2, DM-12, SO-8, BD-9, BD-10, UI-2, TS-7, TS-10, TS-14, TS-20, DC-10, DC-11), then the rules that correct what remains. PF-5 still applies.
+- **Gate each section.** After each section, run the tests, the benchmarks, and the tooling. Do not start the next section until they pass. One section per commit.
+- **Re-check stale findings.** Findings gathered in parallel go stale once earlier fixes land. Re-check a section's findings against the current code before fixing them.
+- **Docs are claims until verified.** During an audit, trust the code over the README and docs, skip the per-change docs check, and apply the docs rules once at the end.
+
 ## Rules
+
+### PF - Performance-critical paths
+
+Speed is a requirement, not an optimization. A design that exists to meet a budget is load-bearing, and the source of truth need not be the durable store.
+
+MUST
+- **PF-1** Every performance-critical path has a stated budget (latency or throughput), recorded as a requirement in its spec.
+- **PF-2** Every design that exists to meet a budget is declared where it lives: what it is, the budget it serves, which store is the source of truth, and what is lost if the process dies before a background write completes.
+- **PF-3** No change to a declared path without measuring before and after. A change that misses the budget is rejected, however much it improves DM, SO, or BD.
+- **PF-4** Compliance on a declared path is achieved inside the design, not by replacing it: name the owner, keep one write path, and define how each copy is derived.
+- **PF-5** A structure that looks like it exists for speed but has no stated reason is never removed on inference. Ask first.
+- **PF-6** Each budget is guarded by a repeatable benchmark or performance test, kept apart from the deterministic tests.
+
+SHOULD
+- **PF-7** The fast path sits behind a narrow interface, so its internals can break the default patterns without the rest of the code depending on them.
+- **PF-8** No optimization without a measurement either: the same evidence standard applies to adding speed as to removing it.
 
 ### DM - Data model
 
@@ -175,16 +221,44 @@ SHOULD
 - **TS-19** Recorded data files (fixtures, captured responses, dumps) state their source and which tests use them; remove them when unused.
 - **TS-20** Do not write tests for trivial code or the framework itself to raise coverage.
 
+### DC - Specs and documentation
+
+Specs follow OpenSpec and say what the system must do. The README and docs say how the system is built, run, and used now.
+
+MUST
+- **DC-1** Every requirement is stored once, in `openspec/specs/`. The README and docs link to a spec and never restate it.
+- **DC-2** Every change to observable behaviour starts as an OpenSpec change in `openspec/changes/`, agreed before code is written. A fix that restores specified behaviour needs none.
+- **DC-3** Main specs change only through OpenSpec's archive or sync step. No hand edits, and nothing under `openspec/changes/archive/` is edited or deleted.
+- **DC-4** A completed change is archived in the same piece of work, and `openspec validate` passes after any edit under `openspec/`.
+- **DC-5** Where code and spec disagree, the spec is right until a change says otherwise. Fix the code or raise a change; never edit the spec to match the code.
+- **DC-6** The repository root has exactly one Markdown file, `README.md`, plus an optional `LICENSE.md`. Every other doc lives under `docs/`.
+- **DC-7** `README.md` holds exactly four things, in order: an opening sentence on what the system does and who it is for, Quick start, Usage, and a link to `docs/index.md`. Plain language, with commands that work on a clean checkout.
+- **DC-8** `docs/index.md` is a router with no detail of its own: one line per doc saying what question it answers, covering at least architecture, development, and deployment, plus a link to `openspec/specs/`.
+- **DC-9** Every doc is reachable from `docs/index.md`, and every topic has one home. Adding, moving, or deleting a doc updates the index in the same change.
+- **DC-10** The README and docs describe only what exists in the code now. Nothing planned, in progress, or removed; no requirements, plans, roadmaps, changelogs, task logs, or session notes.
+- **DC-11** Every code change updates the README and docs it makes wrong, in the same change. References to removed or renamed code are removed or renamed, and a doc left describing nothing is deleted.
+- **DC-12** No secrets, real credentials, or personal machine setup in any doc.
+- **DC-13** `docs/architecture.md` opens with four sections, in order: performance-critical paths with their budgets, data model, state ownership, boundaries and dependency direction. Every statement in it is checked against the code before it is written and is true of the code now. Nothing misstated, overstated, or aspirational; where the code falls short of PF, DM, SO, or BD, the doc says so plainly.
+
+SHOULD
+- **DC-14** One capability per spec folder, named as in the data model.
+- **DC-15** A change is small enough to implement and archive in one piece of work; otherwise split it.
+- **DC-16** The reasoning behind a decision goes in the change's design file, not in `docs/`.
+- **DC-17** The README fits in one or two screens; move growth to a doc and link to it.
+- **DC-18** Extend an existing doc before creating one. One doc per topic, named in lowercase with hyphens.
+- **DC-19** Each doc opens with one sentence on what it covers and who needs it, and gives exact paths, commands, and names from the code.
+- **DC-20** Point to code or configuration as the source for values that change, rather than restating them.
+
 ## Reporting
 
 Report findings only, one line each:
 
-`ID | where (file:line, table, component, or test) | what goes wrong | smallest fix`
+`ID | where (file:line, table, component, test, spec, or doc) | what goes wrong | smallest fix`
 
 Example: `SO-2 | orders/refund.py:41 | second write path to order.status, so a refund can overwrite a shipment update | call OrderService.set_status`
 
 - MUST findings first, then SHOULD.
-- List pre-existing violations separately from those the change introduces, at most five unless a full review was requested.
+- List pre-existing violations separately from those the change introduces, at most five unless a full review or audit was requested.
 - If there are none, say "No guardrail findings."
 
 ## Exceptions
@@ -195,4 +269,4 @@ Rules may be broken deliberately, never silently. When the user accepts a violat
 - keep the violation behind an interface so other code does not depend on it;
 - mention it in the summary of the change.
 
-Typical legitimate exceptions: a denormalized column or cache justified by measured performance, a temporary dual write during a migration, a one-off visual treatment for a marketing surface, a characterization test pinned to current behaviour before a refactor, a prototype explicitly marked as throwaway.
+Typical legitimate exceptions: a denormalized column or cache justified by measured performance, a temporary dual write during a migration, a one-off visual treatment for a marketing surface, a characterization test pinned to current behaviour before a refactor, a root Markdown file that a tool requires at that exact path, a prototype explicitly marked as throwaway.
