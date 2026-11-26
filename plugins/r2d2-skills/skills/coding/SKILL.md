@@ -1,6 +1,6 @@
 # Coding
 
-Guardrails for seven structural areas: performance-critical paths (PF), data model (DM), state ownership (SO), boundaries and dependency direction (BD), UI components and UX (UI), tests (TS), specs and documentation (DC).
+Guardrails for eight structural areas: performance-critical paths (PF), data model (DM), state ownership (SO), boundaries and dependency direction (BD), type system (TY), UI components and UX (UI), tests (TS), specs and documentation (DC).
 
 The rules serve the system's requirements, including speed. No rule justifies a regression against a stated requirement or performance budget.
 
@@ -12,7 +12,7 @@ Pick the tier that fits.
 
 | Tier | Fits when | Do |
 |---|---|---|
-| Skip | No change to behaviour or to a performance-critical path, and no new or changed entity, field, stored or cached state, module, cross-module call, component, screen, flow, test, spec, or doc. Examples: styling that uses existing tokens and components, a comment, an internal rename. | Stop. Apply nothing from this skill and do not mention it. |
+| Skip | No change to behaviour or to a performance-critical path, and no new or changed entity, field, stored or cached state, module, cross-module call, shared type, public interface, component, screen, flow, test, spec, or doc. Examples: styling that uses existing tokens and components, a comment, an internal rename. | Stop. Apply nothing from this skill and do not mention it. |
 | Inline | The change touches one or two areas in a handful of files. | Route (step 2) and apply the routed sections yourself. No subagents. |
 | Orchestrate | A feature spanning several modules, a schema redesign, or a review of a large diff. | Route (step 2), then delegate (step 4). |
 | Audit | Checking or fixing an existing codebase, test suite, or docs tree against these rules. | Follow step 5. |
@@ -27,6 +27,7 @@ Unsure between Skip and Inline: choose Inline. Unsure between Inline and Orchest
 | adds or alters an entity, field, relationship, constraint, or migration | DM |
 | adds or alters stored, cached, shared, or client-side state, or adds a write to existing state | SO |
 | adds a module, a cross-module import or call, or an external integration | BD |
+| adds or alters a shared type, a public interface or signature, or adds a cast, an untyped value, or a suppressed type error | TY |
 | adds or alters a component, screen, form, or user flow | UI |
 | adds or alters tests, fixes a bug, or changes behaviour that existing tests cover | TS |
 | adds, removes, or alters observable behaviour, or touches `openspec/`, `README.md`, `docs/`, or any Markdown file | DC |
@@ -36,13 +37,13 @@ Apply only the routed sections.
 - **Writing code:** apply the MUST rules of each routed section. Consult its SHOULD rules only when you are designing something new in that area.
 - **Reviewing:** apply both MUST and SHOULD rules of each routed section.
 
-**Order.** When several sections are routed, apply them in the order a change is made: the spec rules first (DC-1 to DC-5), then PF, DM, SO, BD, UI, TS, and the docs rules last (DC-6 to DC-13). Under PF, read the budget and take the baseline measurement before changing any code, and take the second measurement once the change is complete.
+**Order.** When several sections are routed, apply them in the order a change is made: the spec rules first (DC-1 to DC-5), then PF, DM, SO, BD, TY, UI, TS, and the docs rules last (DC-6 to DC-13). Under PF, read the budget and take the baseline measurement before changing any code, and take the second measurement once the change is complete.
 
 **Precedence.** A stated requirement or performance budget outranks a structural rule. A MUST outranks a SHOULD. When two MUST rules conflict, stop and ask.
 
 ## 3. Working rules
 
-- **Scope your reading.** Read only the entities, write paths, modules, components, tests, specs, and docs this change touches. Do not survey the codebase. Do not design from assumptions about the parts you do touch.
+- **Scope your reading.** Read only the entities, write paths, modules, types, components, tests, specs, and docs this change touches. Do not survey the codebase. Do not design from assumptions about the parts you do touch.
 - **Read the routers first.** For what the system must do, open the relevant spec under `openspec/specs/`. For how it is built or run, follow `docs/index.md` to the one relevant doc. Then search the code.
 - **Check the docs on every change.** For any Inline or Orchestrate change, apply DC-11 even when DC is not routed, and DC-13 when PF, DM, SO, or BD is routed. End your summary with `Docs: updated <files>` or `Docs: no impact`.
 - **Tooling first.** If the project has linters, type checks, import-boundary rules, accessibility or token linters, schema constraints, link checkers, benchmarks, `openspec validate`, or architecture tests, run them and trust the result. Reason only about rules they do not cover. If a rule that tooling could check keeps being violated, suggest adding the check, once.
@@ -63,7 +64,7 @@ Use this only if you can spawn subagents. Otherwise work through the routed sect
   2. the diff or the exact file paths to check;
   3. the task: "list violations of these rules in these files; read-only; do not fix";
   4. the output format from Reporting, a cap of 10 findings, no preamble, and the single word "none" if there are none.
-- **Delegate lookups too.** Questions such as "where is X written", "is there an existing component for Y", "is there already a test for Z", "which docs mention W", or "what imports V" go to a small-model search subagent that returns the conclusion with file and line, not file contents.
+- **Delegate lookups too.** Questions such as "where is X written", "is there an existing component for Y", "is there already a type for Z", "which docs mention W", or "what imports V" go to a small-model search subagent that returns the conclusion with file and line, not file contents.
 - **Verify before reporting.** Open the cited location for every MUST finding and drop any you cannot confirm. Spot-check SHOULD findings.
 - **Do not over-delegate.** If only one section is routed and the diff is small, do it inline.
 
@@ -75,13 +76,13 @@ Find in parallel, fix in sequence. Finding follows step 4 across every section. 
   1. Gaps: report missing specs, budgets, and declarations (DC-1, PF-1, PF-2), and agree them with the user before fixing anything.
   2. PF: take the baseline measurements.
   3. TS safety net: bring the tests around the code to be changed up to TS-1, TS-2, TS-3, and TS-11, and get them passing.
-  4. DM, then SO, then BD.
+  4. DM, then SO, then BD, then TY.
   5. UI.
   6. TS, the remaining rules.
   7. DC-6 to DC-13, once, at the end.
 - **Earlier sections are frozen.** A fix under one section satisfies every MUST of the sections already completed. If it cannot, stop and ask.
 - **Fixes preserve behaviour.** A fix that would change observable behaviour is not an audit fix. Raise an OpenSpec change for it (DC-2).
-- **Remove before repair.** Within a section, first apply the rules that delete or merge (DM-1, DM-2, DM-12, SO-8, BD-9, BD-10, UI-2, TS-7, TS-10, TS-14, TS-20, DC-10, DC-11), then the rules that correct what remains. PF-5 still applies.
+- **Remove before repair.** Within a section, first apply the rules that delete or merge (DM-1, DM-2, DM-12, SO-8, BD-9, BD-10, TY-1, TY-16, UI-2, TS-7, TS-10, TS-14, TS-20, DC-10, DC-11), then the rules that correct what remains. PF-5 still applies.
 - **Gate each section.** After each section, run the tests, the benchmarks, and the tooling. Do not start the next section until they pass. One section per commit.
 - **Re-check stale findings.** Findings gathered in parallel go stale once earlier fixes land. Re-check a section's findings against the current code before fixing them.
 - **Docs are claims until verified.** During an audit, trust the code over the README and docs, skip the per-change docs check, and apply the docs rules once at the end.
@@ -95,7 +96,7 @@ Speed is a requirement, not an optimization. A design that exists to meet a budg
 MUST
 - **PF-1** Every performance-critical path has a stated budget (latency or throughput), recorded as a requirement in its spec.
 - **PF-2** Every design that exists to meet a budget is declared where it lives: what it is, the budget it serves, which store is the source of truth, and what is lost if the process dies before a background write completes.
-- **PF-3** No change to a declared path without measuring before and after. A change that misses the budget is rejected, however much it improves DM, SO, or BD.
+- **PF-3** No change to a declared path without measuring before and after. A change that misses the budget is rejected, however much it improves DM, SO, BD, or TY.
 - **PF-4** Compliance on a declared path is achieved inside the design, not by replacing it: name the owner, keep one write path, and define how each copy is derived.
 - **PF-5** A structure that looks like it exists for speed but has no stated reason is never removed on inference. Ask first.
 - **PF-6** Each budget is guarded by a repeatable benchmark or performance test, kept apart from the deterministic tests.
@@ -160,6 +161,31 @@ SHOULD
 - **BD-11** Organize by domain capability rather than technical type where the codebase allows.
 - **BD-12** Encode dependency rules in tooling where it exists, so violations fail automatically.
 
+### TY - Type system
+
+Types state the data model in code, so that a wrong program fails to compile rather than fails in use. In a dynamically typed language, apply these through annotations and a checker where the project uses one, and through validation at the boundary otherwise.
+
+MUST
+- **TY-1** Every domain concept has exactly one type in the core, named as in the data model. No second type for the same concept.
+- **TY-2** Illegal states are unrepresentable. A value that takes one of several shapes is a tagged union, not one record with optional fields and flags that can contradict.
+- **TY-3** Untrusted data is parsed into a domain type once, at the boundary. Inside the core a value is valid by construction and is not validated again.
+- **TY-4** No escape from the type checker: no untyped or dynamic values, unchecked casts, forced non-null, or suppressed type errors. Where one is unavoidable at a boundary, it is confined to one place and carries the reason.
+- **TY-5** Absence and failure are explicit in the type. A value is optional only when absence has a stated meaning, and an expected failure is part of the return type, never a sentinel such as -1, an empty string, or null.
+- **TY-6** Distinct concepts have distinct types even when they are stored alike: identifiers of different entities, money, units, raw and validated input. No bare primitives for these in a signature.
+- **TY-7** Every closed set of values is an enumeration or union, never a free string or magic number, and every branch over one is exhaustive, so a new case fails the check until it is handled.
+- **TY-8** The type checker runs at its strictest practical setting and passes. Types are never loosened to make it pass.
+
+SHOULD
+- **TY-9** Types have one source. Where a schema or API contract exists, types are generated from it or it from them, never copied by hand.
+- **TY-10** Public interfaces carry explicit types; local values are inferred.
+- **TY-11** Values are immutable by default; mutation is explicit and local.
+- **TY-12** Use the simplest type that states the constraint. No type-level programming, deep generics, or clever conditional types where a plain type will do; a type a new reader cannot follow in a minute is too clever.
+- **TY-13** Generics only where two or more real uses exist.
+- **TY-14** Functions accept the least they need and return the most specific type they can.
+- **TY-15** Composition and small interfaces over deep inheritance.
+- **TY-16** No unused or near-duplicate types. Variants of a type are derived from the one base type, not redefined.
+- **TY-17** A type lives with the module that owns the concept. No shared dumping ground of types that everything imports.
+
 ### UI - Components and UX
 
 Independent of language, framework, and platform. Use the project's existing component library and conventions.
@@ -219,7 +245,7 @@ SHOULD
 - **TS-17** Snapshots are small and reviewed. Prefer explicit assertions on the fields that matter.
 - **TS-18** No logic in tests (loops, conditionals, computed expectations). Expected values are written literally.
 - **TS-19** Recorded data files (fixtures, captured responses, dumps) state their source and which tests use them; remove them when unused.
-- **TS-20** Do not write tests for trivial code or the framework itself to raise coverage.
+- **TS-20** Do not write tests for trivial code, the framework itself, or what the type checker already proves, to raise coverage.
 
 ### DC - Specs and documentation
 
@@ -253,7 +279,7 @@ SHOULD
 
 Report findings only, one line each:
 
-`ID | where (file:line, table, component, test, spec, or doc) | what goes wrong | smallest fix`
+`ID | where (file:line, table, type, component, test, spec, or doc) | what goes wrong | smallest fix`
 
 Example: `SO-2 | orders/refund.py:41 | second write path to order.status, so a refund can overwrite a shipment update | call OrderService.set_status`
 
@@ -269,4 +295,4 @@ Rules may be broken deliberately, never silently. When the user accepts a violat
 - keep the violation behind an interface so other code does not depend on it;
 - mention it in the summary of the change.
 
-Typical legitimate exceptions: a denormalized column or cache justified by measured performance, a temporary dual write during a migration, a one-off visual treatment for a marketing surface, a characterization test pinned to current behaviour before a refactor, a root Markdown file that a tool requires at that exact path, a prototype explicitly marked as throwaway.
+Typical legitimate exceptions: a denormalized column or cache justified by measured performance, a temporary dual write during a migration, an unchecked cast confined to one boundary function, a one-off visual treatment for a marketing surface, a characterization test pinned to current behaviour before a refactor, a root Markdown file that a tool requires at that exact path, a prototype explicitly marked as throwaway.
