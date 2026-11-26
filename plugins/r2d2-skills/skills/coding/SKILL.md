@@ -82,7 +82,7 @@ Find in parallel, fix in sequence. Finding follows step 4 across every section. 
   7. DC-6 to DC-13, once, at the end.
 - **Earlier sections are frozen.** A fix under one section satisfies every MUST of the sections already completed. If it cannot, stop and ask.
 - **Fixes preserve behaviour.** A fix that would change observable behaviour is not an audit fix. Raise an OpenSpec change for it (DC-2).
-- **Remove before repair.** Within a section, first apply the rules that delete or merge (DM-1, DM-2, DM-12, SO-8, BD-9, BD-10, TY-1, TY-16, UI-2, TS-7, TS-10, TS-14, TS-20, DC-10, DC-11), then the rules that correct what remains. PF-5 still applies.
+- **Remove before repair.** Within a section, first apply the rules that delete or merge (DM-1, DM-2, DM-12, SO-8, BD-9, BD-10, TY-1, TY-16, UI-2, TS-7, TS-10, TS-14, TS-20, DC-8, DC-10, DC-11), then the rules that correct what remains. PF-5 still applies.
 - **Gate each section.** After each section, run the tests, the benchmarks, and the tooling. Do not start the next section until they pass. One section per commit.
 - **Re-check stale findings.** Findings gathered in parallel go stale once earlier fixes land. Re-check a section's findings against the current code before fixing them.
 - **Docs are claims until verified.** During an audit, trust the code over the README and docs, skip the per-change docs check, and apply the docs rules once at the end.
@@ -259,10 +259,10 @@ MUST
 - **DC-5** Where code and spec disagree, the spec is right until a change says otherwise. Fix the code or raise a change; never edit the spec to match the code.
 - **DC-6** The repository root has exactly one Markdown file, `README.md`, plus an optional `LICENSE.md`. Every other doc lives under `docs/`.
 - **DC-7** `README.md` holds exactly four things, in order: an opening sentence on what the system does and who it is for, Quick start, Usage, and a link to `docs/index.md`. Plain language, with commands that work on a clean checkout.
-- **DC-8** `docs/index.md` is a router with no detail of its own: one line per doc saying what question it answers, covering at least architecture, development, and deployment, plus a link to `openspec/specs/`.
-- **DC-9** Every doc is reachable from `docs/index.md`, and every topic has one home. Adding, moving, or deleting a doc updates the index in the same change.
+- **DC-8** `docs/` holds exactly five files and nothing else: `index.md`, `local-development.md`, `architecture.md`, `deployment.md`, `operations.md`. `index.md` is a router with no detail of its own: one line per doc saying what question it answers, plus a link to `openspec/specs/`.
+- **DC-9** Every topic has one home, by scope. `local-development.md`: setup, running, testing, and conventions. `architecture.md`: how the system is built. `deployment.md`: building, configuring, and releasing. `operations.md`: monitoring, backup and restore, rollback, and known failure modes. Content that fits none of these does not belong in the docs.
 - **DC-10** The README and docs describe only what exists in the code now. Nothing planned, in progress, or removed; no requirements, plans, roadmaps, changelogs, task logs, or session notes.
-- **DC-11** Every code change updates the README and docs it makes wrong, in the same change. References to removed or renamed code are removed or renamed, and a doc left describing nothing is deleted.
+- **DC-11** Every code change updates the README and docs it makes wrong, in the same change. References to removed or renamed code are removed or renamed, and a section left describing nothing is deleted.
 - **DC-12** No secrets, real credentials, or personal machine setup in any doc.
 - **DC-13** `docs/architecture.md` opens with four sections, in order: performance-critical paths with their budgets, data model, state ownership, boundaries and dependency direction. Every statement in it is checked against the code before it is written and is true of the code now. Nothing misstated, overstated, or aspirational; where the code falls short of PF, DM, SO, or BD, the doc says so plainly.
 
@@ -271,7 +271,7 @@ SHOULD
 - **DC-15** A change is small enough to implement and archive in one piece of work; otherwise split it.
 - **DC-16** The reasoning behind a decision goes in the change's design file, not in `docs/`.
 - **DC-17** The README fits in one or two screens; move growth to a doc and link to it.
-- **DC-18** Extend an existing doc before creating one. One doc per topic, named in lowercase with hyphens.
+- **DC-18** New content goes under a heading in the doc whose scope it fits, never into a new file.
 - **DC-19** Each doc opens with one sentence on what it covers and who needs it, and gives exact paths, commands, and names from the code.
 - **DC-20** Point to code or configuration as the source for values that change, rather than restating them.
 
@@ -296,3 +296,5 @@ Rules may be broken deliberately, never silently. When the user accepts a violat
 - mention it in the summary of the change.
 
 Typical legitimate exceptions: a denormalized column or cache justified by measured performance, a temporary dual write during a migration, an unchecked cast confined to one boundary function, a one-off visual treatment for a marketing surface, a characterization test pinned to current behaviour before a refactor, a root Markdown file that a tool requires at that exact path, a prototype explicitly marked as throwaway.
+
+T
