@@ -1,6 +1,6 @@
 # Coding
 
-Guardrails for eight structural areas: performance-critical paths (PF), data model (DM), state ownership (SO), boundaries and dependency direction (BD), type system (TY), UI components and UX (UI), tests (TS), specs and documentation (DC).
+Guardrails for ten structural areas: performance-critical paths (PF), data model (DM), state ownership (SO), boundaries and dependency direction (BD), data access (DA), API contract (AP), type system (TY), UI components and UX (UI), tests (TS), specs and documentation (DC).
 
 The rules serve the system's requirements, including speed. No rule justifies a regression against a stated requirement or performance budget.
 
@@ -12,7 +12,7 @@ Pick the tier that fits.
 
 | Tier | Fits when | Do |
 |---|---|---|
-| Skip | No change to behaviour or to a performance-critical path, and no new or changed entity, field, stored or cached state, module, cross-module call, shared type, public interface, component, screen, flow, test, spec, or doc. Examples: styling that uses existing tokens and components, a comment, an internal rename. | Stop. Apply nothing from this skill and do not mention it. |
+| Skip | No change to behaviour or to a performance-critical path, and no new or changed entity, field, stored or cached state, module, cross-module call, query, endpoint, shared type, public interface, component, screen, flow, test, spec, or doc. Examples: styling that uses existing tokens and components, a comment, an internal rename. | Stop. Apply nothing from this skill and do not mention it. |
 | Inline | The change touches one or two areas in a handful of files. | Route (step 2) and apply the routed sections yourself. No subagents. |
 | Orchestrate | A feature spanning several modules, a schema redesign, or a review of a large diff. | Route (step 2), then delegate (step 4). |
 | Audit | Checking or fixing an existing codebase, test suite, or docs tree against these rules. | Follow step 5. |
@@ -27,6 +27,8 @@ Unsure between Skip and Inline: choose Inline. Unsure between Inline and Orchest
 | adds or alters an entity, field, relationship, constraint, or migration | DM |
 | adds or alters stored, cached, shared, or client-side state, or adds a write to existing state | SO |
 | adds a module, a cross-module import or call, or an external integration | BD |
+| adds or alters a database query, an ORM model, or a migration | DA |
+| adds or alters an HTTP endpoint, its request, response, or errors, or the OpenAPI document | AP |
 | adds or alters a shared type, a public interface or signature, or adds a cast, an untyped value, or a suppressed type error | TY |
 | adds or alters a component, screen, form, or user flow | UI |
 | adds or alters tests, fixes a bug, or changes behaviour that existing tests cover | TS |
@@ -37,16 +39,16 @@ Apply only the routed sections.
 - **Writing code:** apply the MUST rules of each routed section. Consult its SHOULD rules only when you are designing something new in that area.
 - **Reviewing:** apply both MUST and SHOULD rules of each routed section.
 
-**Order.** When several sections are routed, apply them in the order a change is made: the spec rules first (DC-1 to DC-5), then PF, DM, SO, BD, TY, UI, TS, and the docs rules last (DC-6 to DC-13). Under PF, read the budget and take the baseline measurement before changing any code, and take the second measurement once the change is complete.
+**Order.** When several sections are routed, apply them in the order a change is made: the spec rules first (DC-1 to DC-5), then PF, DM, SO, BD, DA, AP, TY, UI, TS, and the docs rules last (DC-6 to DC-13). Under PF, read the budget and take the baseline measurement before changing any code, and take the second measurement once the change is complete.
 
-**Precedence.** A stated requirement or performance budget outranks a structural rule. A MUST outranks a SHOULD. When two MUST rules conflict, stop and ask.
+**Precedence.** A stated requirement or performance budget outranks a structural rule, except DA-2 and DA-3, which have no exceptions. A MUST outranks a SHOULD. When two MUST rules conflict, stop and ask.
 
 ## 3. Working rules
 
-- **Scope your reading.** Read only the entities, write paths, modules, types, components, tests, specs, and docs this change touches. Do not survey the codebase. Do not design from assumptions about the parts you do touch.
-- **Read the routers first.** For what the system must do, open the relevant spec under `openspec/specs/`. For how it is built or run, follow `docs/index.md` to the one relevant doc. Then search the code.
+- **Scope your reading.** Read only the entities, write paths, modules, queries, endpoints, types, components, tests, specs, and docs this change touches. Do not survey the codebase. Do not design from assumptions about the parts you do touch.
+- **Read the routers first.** For what the system must do, open the relevant spec under `openspec/specs/`. For the shape of the API, open `openapi/openapi.yaml`. For how the system is built or run, follow `docs/index.md` to the one relevant doc. Then search the code.
 - **Check the docs on every change.** For any Inline or Orchestrate change, apply DC-11 even when DC is not routed, and DC-13 when PF, DM, SO, or BD is routed. End your summary with `Docs: updated <files>` or `Docs: no impact`.
-- **Tooling first.** If the project has linters, type checks, import-boundary rules, accessibility or token linters, schema constraints, link checkers, benchmarks, `openspec validate`, or architecture tests, run them and trust the result. Reason only about rules they do not cover. If a rule that tooling could check keeps being violated, suggest adding the check, once.
+- **Tooling first.** If the project has linters, type checks, import-boundary rules, OpenAPI validation, accessibility or token linters, schema constraints, link checkers, benchmarks, `openspec validate`, or architecture tests, run them and trust the result. Reason only about rules they do not cover. If a rule that tooling could check keeps being violated, suggest adding the check, once.
 - **MUST rules block.** Do not write or approve code that violates one. If the request requires a violation, stop, state the cost in one or two sentences, and propose the compliant alternative. Proceed only if the user explicitly accepts, and record it (see Exceptions).
 - **SHOULD rules are defaults.** Follow them unless there is a concrete reason not to; state the reason in one line.
 - **Stay on the change.** Match existing conventions where they satisfy the rules. Do not refactor unrelated code to comply.
@@ -73,16 +75,16 @@ Use this only if you can spawn subagents. Otherwise work through the routed sect
 Find in parallel, fix in sequence. Finding follows step 4 across every section. Fixing follows the rules below, so that complying with one section does not break another.
 
 - **Fix in this order.**
-  1. Gaps: report missing specs, budgets, and declarations (DC-1, PF-1, PF-2), and agree them with the user before fixing anything.
+  1. Gaps: report missing specs, budgets, declarations, and API contract (DC-1, PF-1, PF-2, AP-1), and agree them with the user before fixing anything.
   2. PF: take the baseline measurements.
   3. TS safety net: bring the tests around the code to be changed up to TS-1, TS-2, TS-3, and TS-11, and get them passing.
-  4. DM, then SO, then BD, then TY.
+  4. DM, then SO, then BD, then DA, then AP, then TY.
   5. UI.
   6. TS, the remaining rules.
   7. DC-6 to DC-13, once, at the end.
 - **Earlier sections are frozen.** A fix under one section satisfies every MUST of the sections already completed. If it cannot, stop and ask.
 - **Fixes preserve behaviour.** A fix that would change observable behaviour is not an audit fix. Raise an OpenSpec change for it (DC-2).
-- **Remove before repair.** Within a section, first apply the rules that delete or merge (DM-1, DM-2, DM-12, SO-8, BD-9, BD-10, TY-1, TY-16, UI-2, TS-7, TS-10, TS-14, TS-20, DC-8, DC-10, DC-11), then the rules that correct what remains. PF-5 still applies.
+- **Remove before repair.** Within a section, first apply the rules that delete or merge (DM-1, DM-2, DM-12, SO-8, BD-9, BD-10, DA-1, TY-1, TY-16, UI-2, TS-7, TS-10, TS-14, TS-20, DC-8, DC-10, DC-11), then the rules that correct what remains. PF-5 still applies.
 - **Gate each section.** After each section, run the tests, the benchmarks, and the tooling. Do not start the next section until they pass. One section per commit.
 - **Re-check stale findings.** Findings gathered in parallel go stale once earlier fixes land. Re-check a section's findings against the current code before fixing them.
 - **Docs are claims until verified.** During an audit, trust the code over the README and docs, skip the per-change docs check, and apply the docs rules once at the end.
@@ -96,7 +98,7 @@ Speed is a requirement, not an optimization. A design that exists to meet a budg
 MUST
 - **PF-1** Every performance-critical path has a stated budget (latency or throughput), recorded as a requirement in its spec.
 - **PF-2** Every design that exists to meet a budget is declared where it lives: what it is, the budget it serves, which store is the source of truth, and what is lost if the process dies before a background write completes.
-- **PF-3** No change to a declared path without measuring before and after. A change that misses the budget is rejected, however much it improves DM, SO, BD, or TY.
+- **PF-3** No change to a declared path without measuring before and after. A change that misses the budget is rejected, however much it improves DM, SO, BD, DA, or TY.
 - **PF-4** Compliance on a declared path is achieved inside the design, not by replacing it: name the owner, keep one write path, and define how each copy is derived.
 - **PF-5** A structure that looks like it exists for speed but has no stated reason is never removed on inference. Ask first.
 - **PF-6** Each budget is guarded by a repeatable benchmark or performance test, kept apart from the deterministic tests.
@@ -160,6 +162,45 @@ SHOULD
 - **BD-10** No pass-through layers, and no single-implementation abstractions unless they protect a boundary that changes independently.
 - **BD-11** Organize by domain capability rather than technical type where the codebase allows.
 - **BD-12** Encode dependency rules in tooling where it exists, so violations fail automatically.
+
+### DA - Data access
+
+Applies to every database the system reads or writes. In-memory dataframes and other non-database structures on a declared performance path are governed by PF.
+
+MUST
+- **DA-1** All database access goes through the project's one ORM. No second data-access library and no direct driver calls.
+- **DA-2** Every query is built with the ORM's query builder. No raw queries, anywhere, including through the ORM's own raw-query escape hatch. No exceptions.
+- **DA-3** No query is ever assembled by concatenating or interpolating strings. Values are always bound parameters. No exceptions.
+- **DA-4** ORM code lives in the persistence layer, behind interfaces the core defines (BD-2). ORM models and rows never enter the core (BD-5).
+- **DA-5** Schema changes go through the ORM's migration tool (DM-7). No manual changes to a database's schema.
+- **DA-6** When the query builder cannot express a query or cannot meet a budget, change the approach, never the rule: reshape the schema, add an index, or serve the path from precomputed or in-memory data under PF.
+
+SHOULD
+- **DA-7** Queries live in persistence functions named for what they return. None inline in handlers, components, or the core.
+- **DA-8** Queries fetch only the columns and rows they need, and load related data explicitly, never one query per row.
+- **DA-9** Every query over an unbounded set is paginated or limited.
+- **DA-10** Transactions are opened at the level of one use case, not inside individual queries (SO-6).
+- **DA-11** On a declared performance path, the generated query and its plan are inspected, not assumed.
+
+### AP - API contract
+
+Applies when the system serves an HTTP API. OpenSpec states what the system must do; OpenAPI states the shape of the API that does it.
+
+MUST
+- **AP-1** Every served API is described by one OpenAPI document at `openapi/openapi.yaml`. It is the only source of truth for the API's shape, and specs refer to its operations rather than restating them.
+- **AP-2** Contract and code cannot drift. Either the document is generated from the code or the handlers and types are generated from the document: one direction per project, never both written by hand. A generated document is still committed at that path.
+- **AP-3** Every endpoint, parameter, request body, response, and error is in the document with a schema. No undocumented endpoints and no free-form bodies.
+- **AP-4** Requests are validated against the contract at the boundary, and responses conform to it (TY-3).
+- **AP-5** Errors have one documented shape across every endpoint.
+- **AP-6** The document is validated by tooling, and a check fails when the served API and the document differ.
+- **AP-7** A breaking change to the contract is a change of behaviour: it starts as an OpenSpec change (DC-2) and follows the project's versioning.
+
+SHOULD
+- **AP-8** Clients and their types are generated from the document, never written by hand (TY-9).
+- **AP-9** API reference is rendered from the document. None is written by hand in `docs/`.
+- **AP-10** Naming, pagination, filtering, and status codes are consistent across endpoints and use the data model's names.
+- **AP-11** Schemas are defined once as shared components and referenced, not redefined inline. A large document is split into files under `openapi/`, with `openapi.yaml` as the entry point.
+- **AP-12** Every operation has a stable, unique identifier and at least one example.
 
 ### TY - Type system
 
@@ -259,7 +300,7 @@ MUST
 - **DC-5** Where code and spec disagree, the spec is right until a change says otherwise. Fix the code or raise a change; never edit the spec to match the code.
 - **DC-6** The repository root has exactly one Markdown file, `README.md`, plus an optional `LICENSE.md`. Every other doc lives under `docs/`.
 - **DC-7** `README.md` holds exactly four things, in order: an opening sentence on what the system does and who it is for, Quick start, Usage, and a link to `docs/index.md`. Plain language, with commands that work on a clean checkout.
-- **DC-8** `docs/` holds exactly five files and nothing else: `index.md`, `local-development.md`, `architecture.md`, `deployment.md`, `operations.md`. `index.md` is a router with no detail of its own: one line per doc saying what question it answers, plus a link to `openspec/specs/`.
+- **DC-8** `docs/` holds exactly five files and nothing else: `index.md`, `local-development.md`, `architecture.md`, `deployment.md`, `operations.md`. `index.md` is a router with no detail of its own: one line per doc saying what question it answers, plus links to `openspec/specs/` and `openapi/openapi.yaml`.
 - **DC-9** Every topic has one home, by scope. `local-development.md`: setup, running, testing, and conventions. `architecture.md`: how the system is built. `deployment.md`: building, configuring, and releasing. `operations.md`: monitoring, backup and restore, rollback, and known failure modes. Content that fits none of these does not belong in the docs.
 - **DC-10** The README and docs describe only what exists in the code now. Nothing planned, in progress, or removed; no requirements, plans, roadmaps, changelogs, task logs, or session notes.
 - **DC-11** Every code change updates the README and docs it makes wrong, in the same change. References to removed or renamed code are removed or renamed, and a section left describing nothing is deleted.
@@ -279,7 +320,7 @@ SHOULD
 
 Report findings only, one line each:
 
-`ID | where (file:line, table, type, component, test, spec, or doc) | what goes wrong | smallest fix`
+`ID | where (file:line, table, query, endpoint, type, component, test, spec, or doc) | what goes wrong | smallest fix`
 
 Example: `SO-2 | orders/refund.py:41 | second write path to order.status, so a refund can overwrite a shipment update | call OrderService.set_status`
 
@@ -289,12 +330,10 @@ Example: `SO-2 | orders/refund.py:41 | second write path to order.status, so a r
 
 ## Exceptions
 
-Rules may be broken deliberately, never silently. When the user accepts a violation:
+Rules may be broken deliberately, never silently, and never DA-2 or DA-3. When the user accepts a violation:
 
 - add a short comment at the site with the rule ID, the reason, and what would allow its removal;
 - keep the violation behind an interface so other code does not depend on it;
 - mention it in the summary of the change.
 
 Typical legitimate exceptions: a denormalized column or cache justified by measured performance, a temporary dual write during a migration, an unchecked cast confined to one boundary function, a one-off visual treatment for a marketing surface, a characterization test pinned to current behaviour before a refactor, a root Markdown file that a tool requires at that exact path, a prototype explicitly marked as throwaway.
-
-T
