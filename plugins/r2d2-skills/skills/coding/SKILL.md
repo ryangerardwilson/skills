@@ -1,6 +1,6 @@
 # Coding
 
-Guardrails for ten structural areas: performance-critical paths (PF), data model (DM), state ownership (SO), boundaries and dependency direction (BD), data access (DA), API contract (AP), type system (TY), UI components and UX (UI), tests (TS), specs and documentation (DC).
+Guardrails for eleven structural areas: performance-critical paths (PF), data model (DM), state ownership (SO), boundaries and dependency direction (BD), data access (DA), API contract (AP), type system (TY), UI components and UX (UI), tests (TS), local development and seed data (LD), specs and documentation (DC).
 
 The rules serve the system's requirements, including speed. No rule justifies a regression against a stated requirement or performance budget.
 
@@ -12,7 +12,7 @@ Pick the tier that fits.
 
 | Tier | Fits when | Do |
 |---|---|---|
-| Skip | No change to behaviour or to a performance-critical path, and no new or changed entity, field, stored or cached state, module, cross-module call, query, endpoint, shared type, public interface, component, screen, flow, test, spec, or doc. Examples: styling that uses existing tokens and components, a comment, an internal rename. | Stop. Apply nothing from this skill and do not mention it. |
+| Skip | No change to behaviour or to a performance-critical path, and no new or changed entity, field, stored or cached state, module, cross-module call, query, endpoint, shared type, public interface, component, screen, flow, test, external dependency, spec, or doc. Examples: styling that uses existing tokens and components, a comment, an internal rename. | Stop. Apply nothing from this skill and do not mention it. |
 | Inline | The change touches one or two areas in a handful of files. | Route (step 2) and apply the routed sections yourself. No subagents. |
 | Orchestrate | A feature spanning several modules, a schema redesign, or a review of a large diff. | Route (step 2), then delegate (step 4). |
 | Audit | Checking or fixing an existing codebase, test suite, or docs tree against these rules. | Follow step 5. |
@@ -32,6 +32,7 @@ Unsure between Skip and Inline: choose Inline. Unsure between Inline and Orchest
 | adds or alters a shared type, a public interface or signature, or adds a cast, an untyped value, or a suppressed type error | TY |
 | adds or alters a component, screen, form, or user flow | UI |
 | adds or alters tests, fixes a bug, or changes behaviour that existing tests cover | TS |
+| adds or alters an entity, a status value, a user flow, an external dependency, configuration, or the setup, seed, or reset commands | LD |
 | adds, removes, or alters observable behaviour, or touches `openspec/`, `README.md`, `docs/`, or any Markdown file | DC |
 
 Apply only the routed sections.
@@ -39,7 +40,7 @@ Apply only the routed sections.
 - **Writing code:** apply the MUST rules of each routed section. Consult its SHOULD rules only when you are designing something new in that area.
 - **Reviewing:** apply both MUST and SHOULD rules of each routed section.
 
-**Order.** When several sections are routed, apply them in the order a change is made: the spec rules first (DC-1 to DC-5), then PF, DM, SO, BD, DA, AP, TY, UI, TS, and the docs rules last (DC-6 to DC-13). Under PF, read the budget and take the baseline measurement before changing any code, and take the second measurement once the change is complete.
+**Order.** When several sections are routed, apply them in the order a change is made: the spec rules first (DC-1 to DC-5), then PF, DM, SO, BD, DA, AP, TY, UI, TS, LD, and the docs rules last (DC-6 to DC-13). Under PF, read the budget and take the baseline measurement before changing any code, and take the second measurement once the change is complete.
 
 **Precedence.** A stated requirement or performance budget outranks a structural rule, except DA-2 and DA-3, which have no exceptions. A MUST outranks a SHOULD. When two MUST rules conflict, stop and ask.
 
@@ -81,7 +82,8 @@ Find in parallel, fix in sequence. Finding follows step 4 across every section. 
   4. DM, then SO, then BD, then DA, then AP, then TY.
   5. UI.
   6. TS, the remaining rules.
-  7. DC-6 to DC-13, once, at the end.
+  7. LD.
+  8. DC-6 to DC-13, once, at the end.
 - **Earlier sections are frozen.** A fix under one section satisfies every MUST of the sections already completed. If it cannot, stop and ask.
 - **Fixes preserve behaviour.** A fix that would change observable behaviour is not an audit fix. Raise an OpenSpec change for it (DC-2).
 - **Remove before repair.** Within a section, first apply the rules that delete or merge (DM-1, DM-2, DM-12, SO-8, BD-9, BD-10, DA-1, TY-1, TY-16, UI-2, TS-7, TS-10, TS-14, TS-20, DC-8, DC-10, DC-11), then the rules that correct what remains. PF-5 still applies.
@@ -288,6 +290,29 @@ SHOULD
 - **TS-19** Recorded data files (fixtures, captured responses, dumps) state their source and which tests use them; remove them when unused.
 - **TS-20** Do not write tests for trivial code, the framework itself, or what the type checker already proves, to raise coverage.
 
+### LD - Local development and seed data
+
+Anyone, human or agent, can run the whole system on a clean checkout and exercise every flow against known dummy data.
+
+MUST
+- **LD-1** The whole system starts locally with one documented command on a clean checkout, with no access to production or any shared service.
+- **LD-2** Every external dependency (database, queue, object storage, third-party API) has a local substitute: a container, an emulator, or a fake behind the interface the core defines (BD-2).
+- **LD-3** Local configuration works out of the box: a committed example with safe defaults, and no secret needed to start.
+- **LD-4** One command seeds the local environment with dummy data and one command resets it to that state. Seeding is deterministic and repeatable: the same data every run, and running it twice changes nothing.
+- **LD-5** Seed data is synthetic. Never production data, real personal data, or real credentials.
+- **LD-6** Seed data is created through the same write paths as real data (SO-2, DA-2), never by loading dumps, so it is always valid against the current schema and rules.
+- **LD-7** The seed set covers every entity, every value of every status, and the empty, boundary, and error cases the UI and specs handle (UI-4).
+- **LD-8** A change that adds or alters an entity, a status value, or a flow updates the seed data in the same change.
+- **LD-9** The seed and reset commands refuse to run against anything but a local or test environment.
+
+SHOULD
+- **LD-10** Seed data and test data come from the same builders (TS-15).
+- **LD-11** The seed set has a few named accounts, one per role, with known sign-in details listed in `docs/local-development.md`.
+- **LD-12** Dates in seed data are set relative to the time of seeding, so the data never looks stale.
+- **LD-13** The default seed set is small enough to load in seconds. A larger set exists for work on performance-critical paths (PF).
+- **LD-14** Local substitutes match production in kind: the same database engine, and fakes that return realistic responses, including failures that can be switched on.
+- **LD-15** In-memory stores and precomputed data on declared paths load from the seed set locally, so fast paths are exercised without production data.
+
 ### DC - Specs and documentation
 
 Specs follow OpenSpec and say what the system must do. The README and docs say how the system is built, run, and used now.
@@ -301,7 +326,7 @@ MUST
 - **DC-6** The repository root has exactly one Markdown file, `README.md`, plus an optional `LICENSE.md`. Every other doc lives under `docs/`.
 - **DC-7** `README.md` holds exactly four things, in order: an opening sentence on what the system does and who it is for, Quick start, Usage, and a link to `docs/index.md`. Plain language, with commands that work on a clean checkout.
 - **DC-8** `docs/` holds exactly five files and nothing else: `index.md`, `local-development.md`, `architecture.md`, `deployment.md`, `operations.md`. `index.md` is a router with no detail of its own: one line per doc saying what question it answers, plus links to `openspec/specs/` and `openapi/openapi.yaml`.
-- **DC-9** Every topic has one home, by scope. `local-development.md`: setup, running, testing, and conventions. `architecture.md`: how the system is built. `deployment.md`: building, configuring, and releasing. `operations.md`: monitoring, backup and restore, rollback, and known failure modes. Content that fits none of these does not belong in the docs.
+- **DC-9** Every topic has one home, by scope. `local-development.md`: setup, running, seeding, testing, and conventions. `architecture.md`: how the system is built. `deployment.md`: building, configuring, and releasing. `operations.md`: monitoring, backup and restore, rollback, and known failure modes. Content that fits none of these does not belong in the docs.
 - **DC-10** The README and docs describe only what exists in the code now. Nothing planned, in progress, or removed; no requirements, plans, roadmaps, changelogs, task logs, or session notes.
 - **DC-11** Every code change updates the README and docs it makes wrong, in the same change. References to removed or renamed code are removed or renamed, and a section left describing nothing is deleted.
 - **DC-12** No secrets, real credentials, or personal machine setup in any doc.
